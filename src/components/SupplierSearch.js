@@ -12,6 +12,7 @@ const SupplierSearch = ({ onSearch, onSearchResults, loading }) => {
   });
   const [pdfFile, setPdfFile] = useState(null);
   const [pdfLoading, setPdfLoading] = useState(false);
+  const [analyzeLoading, setAnalyzeLoading] = useState(false);
 
   const handleSubmit = async (e) => {
     e.preventDefault();
@@ -71,6 +72,30 @@ const SupplierSearch = ({ onSearch, onSearchResults, loading }) => {
     }
   };
 
+  const handleAnalyzeCompany = async (e) => {
+    e.preventDefault();
+    setAnalyzeLoading(true);
+    setSearchProgress({ stage: 'analyzing', message: 'Analyzing company website...', progress: 30 });
+    try {
+      const res = await fetch('/api/analyze-company', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ websiteUrl: category })
+      });
+      const data = await res.json();
+      if (data.supplier) {
+        setSearchProgress({ stage: 'analyzing', message: 'Company analysis complete!', progress: 100 });
+        if (onSearchResults) onSearchResults([data.supplier]);
+      } else {
+        setSearchProgress({ stage: 'analyzing', message: 'Failed to analyze company.', progress: 0 });
+      }
+    } catch (err) {
+      setSearchProgress({ stage: 'analyzing', message: 'Error analyzing company.', progress: 0 });
+    } finally {
+      setAnalyzeLoading(false);
+    }
+  };
+
   const suggestedCategories = [
     'Aluminium',
     'Steel',
@@ -89,6 +114,15 @@ const SupplierSearch = ({ onSearch, onSearchResults, loading }) => {
     'Renewable Energy'
   ];
 
+  const isUrl = (str) => {
+    try {
+      new URL(str);
+      return true;
+    } catch (_) {
+      return false;
+    }
+  };
+
   return (
     <div className="bg-white rounded-lg shadow-sm border p-6">
       <div className="max-w-3xl mx-auto">
@@ -101,7 +135,7 @@ const SupplierSearch = ({ onSearch, onSearchResults, loading }) => {
           </p>
         </div>
 
-        <form onSubmit={handleSubmit} className="space-y-4 text-black">
+        <form onSubmit={isUrl(category) ? handleAnalyzeCompany : handleSubmit} className="space-y-4 text-black">
           <div className="relative">
             <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
               <Search className="h-5 w-5 text-gray-400" />
@@ -117,23 +151,43 @@ const SupplierSearch = ({ onSearch, onSearchResults, loading }) => {
           </div>
 
           <div className="flex justify-center">
-            <button
-              type="submit"
-              disabled={loading || !category.trim()}
-              className="flex items-center space-x-2 px-8 py-3 bg-blue-600 text-white rounded-lg hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed font-medium"
-            >
-              {loading ? (
-                <>
-                  <Loader2 className="h-5 w-5 animate-spin" />
-                  <span>Discovering Suppliers...</span>
-                </>
-              ) : (
-                <>
-                  <Search className="h-5 w-5" />
-                  <span>Discover 3 Suppliers</span>
-                </>
-              )}
-            </button>
+            {isUrl(category) ? (
+              <button
+                type="submit"
+                disabled={analyzeLoading || !category.trim()}
+                className="flex items-center space-x-2 px-8 py-3 bg-green-600 text-white rounded-lg hover:bg-green-700 disabled:opacity-50 disabled:cursor-not-allowed font-medium"
+              >
+                {analyzeLoading ? (
+                  <>
+                    <Loader2 className="h-5 w-5 animate-spin" />
+                    <span>Analyzing Company...</span>
+                  </>
+                ) : (
+                  <>
+                    <Search className="h-5 w-5" />
+                    <span>Search</span>
+                  </>
+                )}
+              </button>
+            ) : (
+              <button
+                type="submit"
+                disabled={loading || !category.trim()}
+                className="flex items-center space-x-2 px-8 py-3 bg-blue-600 text-white rounded-lg hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed font-medium"
+              >
+                {loading ? (
+                  <>
+                    <Loader2 className="h-5 w-5 animate-spin" />
+                    <span>Discovering Suppliers...</span>
+                  </>
+                ) : (
+                  <>
+                    <Search className="h-5 w-5" />
+                    <span>Discover 3 Suppliers</span>
+                  </>
+                )}
+              </button>
+            )}
           </div>
 
           {/* PDF Upload Button - below search button */}
