@@ -192,11 +192,11 @@ const SupplierSearch = ({ onSearch, onSearchResults, loading }) => {
 
           {/* PDF Upload Button - below search button */}
           <div className="flex flex-col items-center space-y-2">
-            <label className="flex items-center space-x-2 cursor-pointer bg-gray-100 hover:bg-gray-200 px-4 py-2 rounded-lg border border-gray-300 text-gray-700">
+            {/* <label className="flex items-center space-x-2 cursor-pointer bg-gray-100 hover:bg-gray-200 px-4 py-2 rounded-lg border border-gray-300 text-gray-700">
               <FileUp className="h-5 w-5" />
               <span>{pdfFile ? pdfFile.name : 'Upload PDF'}</span>
               <input type="file" accept="application/pdf" className="hidden" onChange={handlePdfUpload} />
-            </label>
+            </label> */}
             {/* Show extract button if PDF is uploaded */}
             {pdfFile && (
               <button
