@@ -304,7 +304,7 @@ export default function DatabaseExtractor({ onDatabaseResults }) {
             <select
               value={selectedTable}
               onChange={(e) => setSelectedTable(e.target.value)}
-              className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-purple-500 focus:border-transparent"
+              className="w-full px-3 py-2 border text-black border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-purple-500 focus:border-transparent"
             >
               {Object.keys(databaseData.tables).map((tableName) => (
                 <option key={tableName} value={tableName}>
