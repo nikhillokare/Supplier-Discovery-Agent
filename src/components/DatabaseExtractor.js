@@ -11,6 +11,46 @@ export default function DatabaseExtractor({ onDatabaseResults }) {
   const [databaseData, setDatabaseData] = useState(null);
   const [selectedTable, setSelectedTable] = useState('');
   const [error, setError] = useState('');
+  const [urlValidation, setUrlValidation] = useState({ isValid: true, message: '' });
+
+  const validateDatabaseUrl = (url) => {
+    const trimmedUrl = url.trim();
+    
+    if (!trimmedUrl) {
+      return { isValid: false, message: 'Database URL is required' };
+    }
+
+    const databaseUrlPatterns = [
+      /^mysql:\/\/[^\/\s]+\/[^\/\s]+(\?.*)?$/i,
+      /^postgresql:\/\/[^\/\s]+\/[^\/\s]+(\?.*)?$/i,
+      /^postgres:\/\/[^\/\s]+\/[^\/\s]+(\?.*)?$/i,
+      /^mongodb:\/\/[^\/\s]+\/[^\/\s]*(\?.*)?$/i,
+      /^mongodb\+srv:\/\/[^\/\s]+\/[^\/\s]*(\?.*)?$/i,
+      /^sqlite:\/\/\/.*\.db$/i,
+      /^file:\/\/\/.*\.db$/i,
+      /^mssql:\/\/[^\/\s]+\/[^\/\s]+(\?.*)?$/i,
+      /^sqlserver:\/\/[^\/\s]+\/[^\/\s]+(\?.*)?$/i,
+      /^oracle:\/\/[^\/\s]+\/[^\/\s]+(\?.*)?$/i
+    ];
+
+    const isValidFormat = databaseUrlPatterns.some(pattern => pattern.test(trimmedUrl));
+    
+    if (!isValidFormat) {
+      return { 
+        isValid: false, 
+        message: 'Invalid database URL format. Please use a valid database connection string.' 
+      };
+    }
+
+    if (trimmedUrl.includes('://') && !trimmedUrl.includes('@') && !trimmedUrl.startsWith('file://') && !trimmedUrl.startsWith('sqlite://')) {
+      return { 
+        isValid: false, 
+        message: 'Database URL should include authentication credentials (username:password@host).' 
+      };
+    }
+
+    return { isValid: true, message: '' };
+  };
 
   const databaseTypes = [
     { value: 'auto', label: 'Auto Detect' },
@@ -48,6 +88,13 @@ export default function DatabaseExtractor({ onDatabaseResults }) {
   const handleDatabaseConnect = async () => {
     if (!databaseUrl.trim()) {
       toast.error('Please enter a database URL');
+      return;
+    }
+
+    const validation = validateDatabaseUrl(databaseUrl);
+    if (!validation.isValid) {
+      toast.error(validation.message);
+      setError(validation.message);
       return;
     }
 
@@ -144,7 +191,7 @@ export default function DatabaseExtractor({ onDatabaseResults }) {
           <select
             value={databaseType}
             onChange={(e) => setDatabaseType(e.target.value)}
-            className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-purple-500 focus:border-transparent"
+            className="w-full px-3 py-2 border text-black border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-purple-500 focus:border-transparent"
           >
             {databaseTypes.map((type) => (
               <option key={type.value} value={type.value}>
@@ -161,10 +208,25 @@ export default function DatabaseExtractor({ onDatabaseResults }) {
           <input
             type="text"
             value={databaseUrl}
-            onChange={(e) => setDatabaseUrl(e.target.value)}
+            onChange={(e) => {
+              const newUrl = e.target.value;
+              setDatabaseUrl(newUrl);
+              const validation = validateDatabaseUrl(newUrl);
+              setUrlValidation(validation);
+            }}
             placeholder="Enter your database connection URL..."
-            className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-purple-500 focus:border-transparent"
+            className={`w-full px-3 py-2 border text-black rounded-md focus:outline-none focus:ring-2 focus:border-transparent ${
+              !urlValidation.isValid && databaseUrl.trim() 
+                ? 'border-red-300 focus:ring-red-500' 
+                : 'border-gray-300 focus:ring-purple-500'
+            }`}
           />
+          {!urlValidation.isValid && databaseUrl.trim() && (
+            <p className="text-xs text-red-600 mt-1 flex items-center space-x-1">
+              <AlertCircle className="h-3 w-3" />
+              <span>{urlValidation.message}</span>
+            </p>
+          )}
           <p className="text-xs text-gray-500 mt-1">
             Example: mysql://user:password@host:3306/database
           </p>
@@ -172,7 +234,7 @@ export default function DatabaseExtractor({ onDatabaseResults }) {
 
         <button
           onClick={handleDatabaseConnect}
-          disabled={loading || !databaseUrl.trim()}
+          disabled={loading || !databaseUrl.trim() || !urlValidation.isValid}
           className="w-full flex items-center justify-center space-x-2 px-4 py-2 bg-purple-600 text-white rounded-md hover:bg-purple-700 disabled:opacity-50 disabled:cursor-not-allowed"
         >
           {loading ? (
