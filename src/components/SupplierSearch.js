@@ -46,27 +46,49 @@ const SupplierSearch = ({ onSearch, onSearchResults, loading }) => {
     setPdfFile(file);
   };
 
-  // Extract PDF handler (send to backend, show spinner)
+  // Extract PDF handler with comprehensive supplier discovery
   const handleExtractPdf = async () => {
     if (!pdfFile) return;
     setPdfLoading(true);
-    setSearchProgress({ stage: 'pdf', message: 'Extracting data from PDF...', progress: 30 });
+    
+    // Progressive status updates for PDF-based discovery
+    const progressStages = [
+      { stage: 'pdf-extract', message: 'Extracting text from PDF...', progress: 20 },
+      { stage: 'pdf-analyze', message: 'Identifying procurement categories...', progress: 40 },
+      { stage: 'pdf-search', message: 'Searching suppliers via Google SERP...', progress: 60 },
+      { stage: 'pdf-process', message: 'Analyzing suppliers with AI...', progress: 80 },
+      { stage: 'pdf-complete', message: 'PDF-based supplier discovery complete!', progress: 100 }
+    ];
+
+    let currentStage = 0;
+    const progressInterval = setInterval(() => {
+      if (currentStage < progressStages.length - 1) {
+        setSearchProgress(progressStages[currentStage]);
+        currentStage++;
+      }
+    }, 3000);
+
     try {
       const formData = new FormData();
       formData.append('file', pdfFile);
-      const res = await fetch('/api/extract-pdf', {
+      const res = await fetch('/api/discover-suppliers-from-pdf', {
         method: 'POST',
         body: formData
       });
       const data = await res.json();
-      if (data.suppliers) {
-        setSearchProgress({ stage: 'pdf', message: 'PDF extraction complete!', progress: 100 });
+      
+      clearInterval(progressInterval);
+      
+      if (data.suppliers && data.suppliers.length > 0) {
+        setSearchProgress({ stage: 'pdf-complete', message: `Discovered ${data.suppliers.length} suppliers from PDF!`, progress: 100 });
         if (onSearchResults) onSearchResults(data.suppliers);
       } else {
-        setSearchProgress({ stage: 'pdf', message: 'Failed to extract data from PDF.', progress: 0 });
+        setSearchProgress({ stage: 'pdf-error', message: data.error || 'No suppliers found in PDF.', progress: 0 });
       }
     } catch (err) {
-      setSearchProgress({ stage: 'pdf', message: 'Error extracting PDF.', progress: 0 });
+      clearInterval(progressInterval);
+      console.error('PDF extraction error:', err);
+      setSearchProgress({ stage: 'pdf-error', message: 'Error processing PDF.', progress: 0 });
     } finally {
       setPdfLoading(false);
     }
@@ -190,66 +212,96 @@ const SupplierSearch = ({ onSearch, onSearchResults, loading }) => {
             )}
           </div>
 
-          {/* PDF Upload Button - below search button */}
-          <div className="flex flex-col items-center space-y-2">
-            {/* <label className="flex items-center space-x-2 cursor-pointer bg-gray-100 hover:bg-gray-200 px-4 py-2 rounded-lg border border-gray-300 text-gray-700">
-              <FileUp className="h-5 w-5" />
-              <span>{pdfFile ? pdfFile.name : 'Upload PDF'}</span>
-              <input type="file" accept="application/pdf" className="hidden" onChange={handlePdfUpload} />
-            </label> */}
-            {/* Show extract button if PDF is uploaded */}
-            {pdfFile && (
-              <button
-                type="button"
-                onClick={handleExtractPdf}
-                disabled={pdfLoading}
-                className="flex items-center space-x-2 px-6 py-2 bg-purple-600 text-white rounded-lg hover:bg-purple-700 disabled:opacity-50 disabled:cursor-not-allowed font-medium mt-1"
-              >
-                {pdfLoading ? (
-                  <>
-                    <Loader2 className="h-5 w-5 animate-spin" />
-                    <span>Extract Supplier Data from PDF</span>
-                  </>
-                ) : (
-                  <span>Extract Supplier Data from PDF</span>
-                )}
-              </button>
-            )}
+          {/* PDF Upload Section */}
+          <div className="mt-6 p-4 bg-orange-50 rounded-lg border border-orange-200">
+            <div className="text-center mb-4">
+              <h3 className="text-lg font-semibold text-orange-900 mb-2">📄 PDF-Based Supplier Discovery</h3>
+              <p className="text-sm text-orange-700">Upload procurement documents to automatically discover relevant suppliers</p>
+            </div>
+            
+            <div className="flex flex-col items-center space-y-3">
+              <label className="flex items-center space-x-2 cursor-pointer bg-white hover:bg-orange-50 px-6 py-3 rounded-lg border border-orange-300 text-orange-700 font-medium transition-colors">
+                <FileUp className="h-5 w-5" />
+                <span>{pdfFile ? `📎 ${pdfFile.name}` : 'Upload PDF Document'}</span>
+                <input type="file" accept="application/pdf" className="hidden" onChange={handlePdfUpload} />
+              </label>
+              
+              {pdfFile && (
+                <div className="flex items-center space-x-3">
+                  <button
+                    type="button"
+                    onClick={handleExtractPdf}
+                    disabled={pdfLoading}
+                    className="flex items-center space-x-2 px-6 py-3 bg-orange-600 text-white rounded-lg hover:bg-orange-700 disabled:opacity-50 disabled:cursor-not-allowed font-medium"
+                  >
+                    {pdfLoading ? (
+                      <>
+                        <Loader2 className="h-5 w-5 animate-spin" />
+                        <span>Discovering Suppliers from PDF...</span>
+                      </>
+                    ) : (
+                      <>
+                        <Search className="h-5 w-5" />
+                        <span>Discover Suppliers from PDF</span>
+                      </>
+                    )}
+                  </button>
+                  
+                  <button
+                    type="button"
+                    onClick={() => setPdfFile(null)}
+                    className="px-4 py-2 text-sm text-orange-600 hover:text-orange-800 underline"
+                  >
+                    Remove
+                  </button>
+                </div>
+              )}
+            </div>
           </div>
         </form>
 
         {/* Real-time Progress Indicator */}
-        {loading && (
-          <div className="mt-6 p-4 bg-blue-50 rounded-lg border border-blue-200">
+        {(loading || pdfLoading) && (
+          <div className={`mt-6 p-4 rounded-lg border ${pdfLoading ? 'bg-orange-50 border-orange-200' : 'bg-blue-50 border-blue-200'}`}>
             <div className="flex items-center space-x-3 mb-3">
               <div className="flex space-x-2">
-                <Globe className="h-4 w-4 text-blue-600" />
-                <Database className="h-4 w-4 text-blue-600" />
-                <Brain className="h-4 w-4 text-blue-600" />
+                <Globe className={`h-4 w-4 ${pdfLoading ? 'text-orange-600' : 'text-blue-600'}`} />
+                <Database className={`h-4 w-4 ${pdfLoading ? 'text-orange-600' : 'text-blue-600'}`} />
+                <Brain className={`h-4 w-4 ${pdfLoading ? 'text-orange-600' : 'text-blue-600'}`} />
               </div>
-              <span className="text-sm font-medium text-blue-900">
-                {searchProgress.stage ? searchProgress.stage.charAt(0).toUpperCase() + searchProgress.stage.slice(1) : 'Initializing...'}
+              <span className={`text-sm font-medium ${pdfLoading ? 'text-orange-900' : 'text-blue-900'}`}>
+                {searchProgress.stage ? searchProgress.stage.charAt(0).toUpperCase() + searchProgress.stage.slice(1).replace('-', ' ') : 'Initializing...'}
               </span>
             </div>
             
             <div className="mb-2">
-              <div className="flex justify-between text-xs text-blue-700 mb-1">
+              <div className={`flex justify-between text-xs mb-1 ${pdfLoading ? 'text-orange-700' : 'text-blue-700'}`}>
                 <span>{searchProgress.message}</span>
                 <span>{searchProgress.progress}%</span>
               </div>
-              <div className="w-full bg-blue-200 rounded-full h-2">
+              <div className={`w-full rounded-full h-2 ${pdfLoading ? 'bg-orange-200' : 'bg-blue-200'}`}>
                 <div 
-                  className="bg-blue-600 h-2 rounded-full transition-all duration-500 ease-out"
+                  className={`h-2 rounded-full transition-all duration-500 ease-out ${pdfLoading ? 'bg-orange-600' : 'bg-blue-600'}`}
                   style={{ width: `${searchProgress.progress}%` }}
                 ></div>
               </div>
             </div>
             
-            <div className="text-xs text-blue-600">
+            <div className={`text-xs ${pdfLoading ? 'text-orange-600' : 'text-blue-600'}`}>
               <div className="flex items-center space-x-4">
-                <span>🔍 Google SERP API</span>
-                <span>🤖 OpenAI GPT-4</span>
-                <span>📊 Real-time Data</span>
+                {pdfLoading ? (
+                  <>
+                    <span>📄 PDF Processing</span>
+                    <span>🔍 Google SERP API</span>
+                    <span>🤖 OpenAI GPT-4</span>
+                  </>
+                ) : (
+                  <>
+                    <span>🔍 Google SERP API</span>
+                    <span>🤖 OpenAI GPT-4</span>
+                    <span>📊 Real-time Data</span>
+                  </>
+                )}
               </div>
             </div>
           </div>
@@ -285,8 +337,8 @@ const SupplierSearch = ({ onSearch, onSearchResults, loading }) => {
           </div>
           <div className="text-center p-4 bg-blue-50 rounded-lg border border-blue-200">
             <div className="text-blue-600 text-2xl mb-2">📊</div>
-            <h3 className="font-semibold text-blue-900">3 Suppliers</h3>
-            <p className="text-sm text-blue-700">Comprehensive analysis of 3 suppliers per category</p>
+            <h3 className="font-semibold text-blue-900">Up to 20 Suppliers</h3>
+            <p className="text-sm text-blue-700">Comprehensive analysis with geographic diversity</p>
           </div>
         </div>
 
