@@ -1,15 +1,18 @@
 'use client';
 
 import { useState, useEffect } from 'react';
-import { Search, Download, Map, BarChart3, Building2, Globe, TrendingUp, AlertTriangle } from 'lucide-react';
+import { Search, Download, Map, BarChart3, Building2, Globe, TrendingUp, AlertTriangle, Database } from 'lucide-react';
 import SupplierSearch from '../components/SupplierSearch';
 import AnalysisTabs from '../components/AnalysisTabs';
+import DatabaseExtractor from '../components/DatabaseExtractor';
 import { toast } from 'react-hot-toast';
 
 export default function Home() {
   const [suppliers, setSuppliers] = useState([]);
   const [loading, setLoading] = useState(false);
   const [userLocation, setUserLocation] = useState(null);
+  const [databaseData, setDatabaseData] = useState(null);
+  const [activeTab, setActiveTab] = useState('suppliers'); // 'suppliers' or 'database'
 
   const handleSearch = async (category) => {
     setLoading(true);
@@ -92,6 +95,11 @@ export default function Home() {
     }
   };
 
+  const handleDatabaseResults = (data) => {
+    setDatabaseData(data);
+    setActiveTab('database'); // Switch to database tab when data is loaded
+  };
+
   useEffect(() => {
     // Get user location for map features
     if (navigator.geolocation) {
@@ -138,18 +146,63 @@ export default function Home() {
 
       {/* Main Content */}
       <main className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
-        <SupplierSearch 
-          onSearch={handleSearch} 
-          onSearchResults={handleSearchResults}
-          loading={loading} 
-        />
-        
-        {suppliers.length > 0 && (
-          <div className="mt-8">
-            <AnalysisTabs 
-              suppliers={suppliers} 
-              userLocation={userLocation}
+        {/* Tab Navigation */}
+        <div className="mb-8">
+          <div className="border-b border-gray-200">
+            <nav className="-mb-px flex space-x-8">
+              <button
+                onClick={() => setActiveTab('suppliers')}
+                className={`py-2 px-1 border-b-2 font-medium text-sm ${
+                  activeTab === 'suppliers'
+                    ? 'border-blue-500 text-blue-600'
+                    : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'
+                }`}
+              >
+                <div className="flex items-center space-x-2">
+                  <Building2 className="h-4 w-4" />
+                  <span>Supplier Discovery</span>
+                </div>
+              </button>
+              <button
+                onClick={() => setActiveTab('database')}
+                className={`py-2 px-1 border-b-2 font-medium text-sm ${
+                  activeTab === 'database'
+                    ? 'border-purple-500 text-purple-600'
+                    : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'
+                }`}
+              >
+                <div className="flex items-center space-x-2">
+                  <Database className="h-4 w-4" />
+                  <span>Database Extractor</span>
+                </div>
+              </button>
+            </nav>
+          </div>
+        </div>
+
+        {/* Tab Content */}
+        {activeTab === 'suppliers' && (
+          <div>
+            <SupplierSearch 
+              onSearch={handleSearch} 
+              onSearchResults={handleSearchResults}
+              loading={loading} 
             />
+            
+            {suppliers.length > 0 && (
+              <div className="mt-8">
+                <AnalysisTabs 
+                  suppliers={suppliers} 
+                  userLocation={userLocation}
+                />
+              </div>
+            )}
+          </div>
+        )}
+
+        {activeTab === 'database' && (
+          <div>
+            <DatabaseExtractor onDatabaseResults={handleDatabaseResults} />
           </div>
         )}
 
